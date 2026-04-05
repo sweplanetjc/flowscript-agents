@@ -31,7 +31,7 @@ class TestToolDefinitions:
             assert "inputSchema" in tool
 
     def test_tool_count(self):
-        assert len(TOOLS) == 19
+        assert len(TOOLS) == 15
 
     def test_tool_names(self):
         names = {t["name"] for t in TOOLS}
@@ -40,9 +40,8 @@ class TestToolDefinitions:
             "query_tensions", "query_blocked", "query_why",
             "query_what_if", "query_alternatives", "query_counterfactual",
             "remove_memory", "session_wrap", "memory_stats",
-            "query_audit", "verify_audit", "explain_decision",
+            "query_audit", "verify_audit",
             "encode_exchange",
-            "think_deeper", "think_creative", "think_breakthrough",
         }
         assert names == expected
 
@@ -299,7 +298,7 @@ class TestMCPStdioProtocol:
             "jsonrpc": "2.0", "id": 2, "method": "tools/list",
         })
         tools = resp["result"]["tools"]
-        assert len(tools) == 20  # 19 verified + verify_integrity
+        assert len(tools) == 16  # 15 verified + verify_integrity
         names = {t["name"] for t in tools}
         assert "search_memory" in names
         assert "query_what_if" in names
@@ -493,22 +492,6 @@ class TestInputValidation:
         assert "error" not in result
         assert result["nodes_created"] == 1
 
-    def test_empty_problem_rejected_deeper(self):
-        handler, _ = _make_handler()
-        result = handler.handle_tool("think_deeper", {"problem": ""})
-        assert "error" in result
-
-    def test_empty_problem_rejected_creative(self):
-        handler, _ = _make_handler()
-        result = handler.handle_tool("think_creative", {"problem": "  "})
-        assert "error" in result
-
-    def test_empty_problem_rejected_breakthrough(self):
-        handler, _ = _make_handler()
-        result = handler.handle_tool("think_breakthrough", {"problem": ""})
-        assert "error" in result
-
-
 class TestSessionWrapWithContinuity:
     """Tests for session_wrap when ContinuityManager is configured."""
 
@@ -578,140 +561,6 @@ class TestVersionNegotiation:
         assert _PROTOCOL_VERSION >= "2025-03-26"
 
 
-class TestExplainDecision:
-    """Tests for the explain_decision MCP tool (Article 86 compliance)."""
-
-    def test_general_audience(self):
-        handler, umem = _make_handler()
-        cause = umem.memory.statement("credit score below threshold")
-        effect = umem.memory.statement("loan denied")
-        cause.causes(effect)
-        result = handler.handle_tool("explain_decision", {
-            "content": "loan denied", "audience": "general",
-        })
-        assert "error" not in result
-        assert "Decision Explanation" in result["explanation"]
-        assert result["deterministic"] is True
-
-    def test_legal_audience_with_subject(self):
-        handler, umem = _make_handler()
-        cause = umem.memory.statement("income below minimum")
-        effect = umem.memory.statement("application rejected")
-        cause.causes(effect)
-        result = handler.handle_tool("explain_decision", {
-            "content": "application rejected",
-            "audience": "legal",
-            "subject": "Applicant #42",
-        })
-        assert "Article 86" in result["explanation"]
-        assert "Applicant #42" in result["explanation"]
-        assert "Generated:" in result["explanation"]
-
-    def test_not_found(self):
-        handler, _ = _make_handler()
-        result = handler.handle_tool("explain_decision", {"content": "nonexistent"})
-        assert "error" in result
-
-    def test_deterministic(self):
-        handler, umem = _make_handler()
-        umem.memory.statement("fact A")
-        effect = umem.memory.statement("conclusion B")
-        umem.memory.ref(umem.memory.nodes[0].id).causes(effect)
-        r1 = handler.handle_tool("explain_decision", {"content": "conclusion B"})
-        r2 = handler.handle_tool("explain_decision", {"content": "conclusion B"})
-        # Exclude timestamp line for determinism check
-        lines1 = [l for l in r1["explanation"].split("\n") if not l.startswith("Generated:")]
-        lines2 = [l for l in r2["explanation"].split("\n") if not l.startswith("Generated:")]
-        assert lines1 == lines2
-
-    def test_tree_format(self):
-        handler, umem = _make_handler()
-        a = umem.memory.statement("root cause")
-        b = umem.memory.statement("intermediate")
-        c = umem.memory.statement("final outcome")
-        a.causes(b)
-        b.causes(c)
-        result = handler.handle_tool("explain_decision", {
-            "content": "final outcome", "format": "tree",
-        })
-        assert "error" not in result
-        assert result["format"] == "tree"
-        assert "factor" in result["explanation"].lower()
-
-    def test_default_audience_is_general(self):
-        handler, umem = _make_handler()
-        umem.memory.statement("test node")
-        result = handler.handle_tool("explain_decision", {"content": "test node"})
-        assert result["audience"] == "general"
-
-
-class TestThinkingModes:
-    """Tests for think_deeper, think_creative, think_breakthrough tools."""
-
-    def test_think_deeper_returns_framework(self):
-        handler, _ = _make_handler()
-        result = handler.handle_tool("think_deeper", {"problem": "Redis vs Postgres"})
-        assert "framework" in result
-        assert "First-Principles" in result["framework"]
-        assert "instruction" in result
-
-    def test_think_deeper_does_not_create_nodes(self):
-        """Thinking tools should NOT pollute the graph with placeholder nodes."""
-        handler, umem = _make_handler()
-        nodes_before = umem.memory.size
-        handler.handle_tool("think_deeper", {"problem": "Which cache layer?"})
-        assert umem.memory.size == nodes_before
-
-    def test_think_deeper_with_context(self):
-        handler, _ = _make_handler()
-        result = handler.handle_tool("think_deeper", {
-            "problem": "Database choice",
-            "context": "Financial app with ACID requirements",
-        })
-        assert "Financial app" in result["context"]
-
-    def test_think_creative_returns_framework(self):
-        handler, _ = _make_handler()
-        result = handler.handle_tool("think_creative", {"problem": "Scaling bottleneck"})
-        assert "framework" in result
-        assert "Assumption" in result["framework"]
-
-    def test_think_creative_with_attempts(self):
-        handler, _ = _make_handler()
-        result = handler.handle_tool("think_creative", {
-            "problem": "Memory leak",
-            "attempts": "Tried profiling, no obvious leaks found",
-        })
-        assert "profiling" in result["context"]
-
-    def test_think_breakthrough_returns_combined_framework(self):
-        handler, _ = _make_handler()
-        result = handler.handle_tool("think_breakthrough", {"problem": "Architecture redesign"})
-        assert "framework" in result
-        # Should contain BOTH rigorous and creative elements
-        assert "Rigorous" in result["framework"] or "first principles" in result["framework"].lower()
-        assert "Creative" in result["framework"] or "assumption" in result["framework"].lower()
-
-    def test_thinking_tools_do_not_pollute_graph(self):
-        """All three thinking tools should leave the graph untouched."""
-        handler, umem = _make_handler()
-        nodes_before = umem.memory.size
-        handler.handle_tool("think_deeper", {"problem": "Caching strategy"})
-        handler.handle_tool("think_creative", {"problem": "User onboarding"})
-        handler.handle_tool("think_breakthrough", {"problem": "Scaling architecture"})
-        assert umem.memory.size == nodes_before
-
-    def test_thinking_tool_descriptions_say_call_add_memory(self):
-        """Regression guard: descriptions must tell agents to call add_memory."""
-        from flowscript_agents.mcp import TOOLS
-        thinking_tools = [t for t in TOOLS if t["name"].startswith("think_")]
-        assert len(thinking_tools) == 3
-        for tool in thinking_tools:
-            assert "add_memory" in tool["description"], (
-                f"{tool['name']} description must mention add_memory"
-            )
-
-
 class TestDescriptionIntegrity:
     """Tests for the three-layer MCP description integrity system."""
 
@@ -735,7 +584,7 @@ class TestDescriptionIntegrity:
         result = handler.handle_tool("verify_integrity", {})
         assert result["verdict"] == "PASS"
         assert result["count_match"] is True
-        assert result["tool_count"] == 19  # verified tools (not counting verify_integrity itself)
+        assert result["tool_count"] == 15  # verified tools (not counting verify_integrity itself)
 
     def test_verify_integrity_per_tool_status(self):
         """Each tool should have pass status with matching hashes."""
