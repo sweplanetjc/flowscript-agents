@@ -49,7 +49,7 @@ Session lifecycle:
 - Explicit session_wrap: LLM or user triggers consolidation at session end
 - atexit wrap: final consolidation when process exits
 
-Tools exposed (20: 19 verified + verify_integrity):
+Tools exposed (16: 15 verified + verify_integrity):
 - search_memory: Unified search (vector + keyword + temporal)
 - add_memory: Auto-extract reasoning from text with consolidation
 - get_context: Get formatted memory for prompt injection
@@ -59,16 +59,12 @@ Tools exposed (20: 19 verified + verify_integrity):
 - query_what_if: Trace downstream impact
 - query_alternatives: Reconstruct decision from options
 - query_counterfactual: Counterfactual analysis (CJEU C-203/22)
-- explain_decision: Generate deterministic Article 86 compliance explanation
 - encode_exchange: Per-response exchange capture for AutoExtract pipeline
 - remove_memory: Remove a node from memory
 - session_wrap: Session consolidation (graduation, pruning, audit trail, save)
 - memory_stats: Get memory statistics
 - query_audit: Search the audit trail with filters
 - verify_audit: Verify hash chain integrity
-- think_deeper: First-principles analytical framework
-- think_creative: Assumption-breaking exploration framework
-- think_breakthrough: Combined rigorous + creative analysis
 - verify_integrity: Verify tool description integrity (SRI for LLM prompts)
 """
 
@@ -465,59 +461,6 @@ _TOOL_DEFS_RAW = [
         "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
     },
     {
-        "name": "explain_decision",
-        "description": (
-            "Generate a deterministic, reproducible explanation of why a decision "
-            "was made. Produces compliance-ready text suitable for EU AI Act "
-            "Article 86 (Right to Explanation). Unlike query_why which returns "
-            "raw causal data for you to interpret, this tool returns a finished "
-            "plain-language document — same input always produces the same output. "
-            "Use 'general' for affected individuals, 'legal' for regulatory "
-            "submissions, 'technical' for developer debugging."
-        ),
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "node_id": {"type": "string", "description": "Node ID to explain"},
-                "content": {
-                    "type": "string",
-                    "description": "Search for node by content (alternative to node_id)",
-                },
-                "audience": {
-                    "type": "string",
-                    "enum": ["general", "legal", "technical"],
-                    "description": (
-                        "Output mode: 'general' = plain English for non-technical "
-                        "individuals (default), 'legal' = formal compliance language "
-                        "with Article 86 citation and hash-chain reference, "
-                        "'technical' = structured representation for debugging"
-                    ),
-                    "default": "general",
-                },
-                "subject": {
-                    "type": "string",
-                    "description": (
-                        "Optional label for the affected entity (e.g. 'Applicant ID #4821'). "
-                        "Included in legal-mode headers. Use pseudonymized identifiers "
-                        "for GDPR compliance."
-                    ),
-                },
-                "format": {
-                    "type": "string",
-                    "enum": ["chain", "minimal", "tree"],
-                    "description": (
-                        "Causal query format: 'chain' (default) = full causal ancestry, "
-                        "'minimal' = root cause + path, 'tree' = all contributing factors. "
-                        "Note: 'minimal' omits the target decision — use 'chain' or 'tree' "
-                        "for full Article 86 compliance."
-                    ),
-                    "default": "chain",
-                },
-            },
-            "additionalProperties": False,
-        },
-    },
-    {
         "name": "query_counterfactual",
         "description": (
             "Counterfactual analysis: what would need to change for a different "
@@ -566,92 +509,6 @@ _TOOL_DEFS_RAW = [
                 },
             },
             "required": ["user_content", "assistant_content"],
-            "additionalProperties": False,
-        },
-    },
-    {
-        "name": "think_deeper",
-        "description": (
-            "Activate rigorous first-principles analysis for the current problem. "
-            "Call this when facing important architectural decisions, debugging "
-            "complex issues, or when standard approaches feel shallow. Returns a "
-            "structured analytical framework to apply. After calling, use the "
-            "returned framework to analyze your problem thoroughly — deconstruct to "
-            "fundamentals, trace consequences across multiple orders, verify "
-            "assumptions explicitly, and hold contradictions without premature "
-            "resolution. After analysis, call add_memory to save key insights — "
-            "without this, your analysis is lost between sessions."
-        ),
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "problem": {
-                    "type": "string",
-                    "description": "The problem, question, or decision to analyze deeply",
-                },
-                "context": {
-                    "type": "string",
-                    "description": "Optional additional context for the analysis",
-                },
-            },
-            "required": ["problem"],
-            "additionalProperties": False,
-        },
-    },
-    {
-        "name": "think_creative",
-        "description": (
-            "Break assumptions and explore unexpected connections for the current "
-            "problem. Call this when stuck after 2+ conventional attempts, when "
-            "standard approaches aren't producing insight, or when you need a "
-            "fundamentally different angle. Returns a creative exploration framework. "
-            "After calling, challenge every assumption — what constraints are real vs "
-            "inherited? What would the opposite approach look like? What patterns from "
-            "unrelated domains apply? After exploration, call add_memory to save "
-            "breakthrough insights — without this, your exploration is lost between sessions."
-        ),
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "problem": {
-                    "type": "string",
-                    "description": "The problem or situation to approach creatively",
-                },
-                "attempts": {
-                    "type": "string",
-                    "description": "Optional: what has been tried so far and why it failed",
-                },
-            },
-            "required": ["problem"],
-            "additionalProperties": False,
-        },
-    },
-    {
-        "name": "think_breakthrough",
-        "description": (
-            "Combined rigorous + creative analysis for maximum problem-solving power. "
-            "Call this for the hardest problems where neither pure rigor nor pure "
-            "creativity alone is sufficient. Combines first-principles deconstruction "
-            "with assumption-breaking for a two-pronged attack: systematic depth AND "
-            "lateral thinking simultaneously. Use when the problem requires both "
-            "understanding WHY current approaches fail AND imagining fundamentally "
-            "different solutions. Returns a comprehensive framework. After analysis, "
-            "call add_memory to save key findings — without this, your analysis is "
-            "lost between sessions."
-        ),
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "problem": {
-                    "type": "string",
-                    "description": "The hard problem requiring both rigor and creativity",
-                },
-                "context": {
-                    "type": "string",
-                    "description": "Optional: what's been tried, why it matters, constraints",
-                },
-            },
-            "required": ["problem"],
             "additionalProperties": False,
         },
     },
@@ -742,12 +599,8 @@ class MCPHandler:
             "memory_stats": self._memory_stats,
             "query_audit": self._query_audit,
             "verify_audit": self._verify_audit,
-            "explain_decision": self._explain_decision,
             "query_counterfactual": self._query_counterfactual,
             "encode_exchange": self._encode_exchange,
-            "think_deeper": self._think_deeper,
-            "think_creative": self._think_creative,
-            "think_breakthrough": self._think_breakthrough,
             "verify_integrity": self._verify_integrity,
         }
         handler = handlers.get(name)
@@ -1060,44 +913,6 @@ class MCPHandler:
                     "status": "no_audit_trail",
                     "note": "No audit trail file found — auditing may not be configured"}
 
-    def _explain_decision(self, args: dict) -> dict:
-        """Generate deterministic Article 86 compliance explanation."""
-        from .explain import explain
-
-        node_id = args.get("node_id")
-        content = args.get("content")
-        audience = args.get("audience", "general")
-        subject = args.get("subject")
-        fmt = args.get("format", "chain")
-
-        # Find the node
-        if not node_id and content:
-            refs = self._umem.memory.find_nodes(content)
-            if refs:
-                node_id = refs[0].id
-        if not node_id:
-            return {"error": "No node found. Provide node_id or searchable content."}
-
-        # Query causal chain
-        try:
-            why_result = self._umem.memory.query.why(node_id, format=fmt)
-        except Exception as e:
-            return {"error": f"Failed to query causal chain: {e}"}
-
-        # Generate explanation
-        try:
-            text = explain(why_result, subject=subject, audience=audience)
-        except (TypeError, ValueError) as e:
-            return {"error": f"Failed to generate explanation: {e}"}
-
-        return {
-            "explanation": text,
-            "audience": audience,
-            "format": fmt,
-            "node_id": node_id,
-            "deterministic": True,
-        }
-
     def _encode_exchange(self, args: dict) -> dict:
         """Encode a user-assistant exchange into the reasoning memory graph."""
         user_content = args.get("user_content", "").strip()
@@ -1124,177 +939,6 @@ class MCPHandler:
             "states_created": result.states_created,
             "node_ids": result.node_ids,
             "exchange_captured": True,
-        }
-
-    # -- Thinking mode tools --
-
-    _DEEPER_FRAMEWORK = """## First-Principles Analysis Framework
-
-Apply this framework to your current problem. Think through each step carefully.
-
-### 1. Deconstruct to Fundamentals
-- What is the ACTUAL problem being solved? (Not the apparent one)
-- What orthogonal concerns are being conflated?
-- Strip assumptions to bedrock — what do you KNOW vs what do you ASSUME?
-
-### 2. Ordered Effects (trace fully)
-- **1st order:** Direct, obvious, immediate consequences
-- **2nd order:** Indirect, less obvious, short-term effects
-- **3rd order:** Emergent, surprising, medium-term implications
-- **4th order+:** Systemic, transformative, long-term shifts
-- Don't optimize 1st order at the expense of 3rd/4th
-
-### 3. Temporal Analysis
-- Immediate / short-term / medium-term / long-term
-- These are tradeoffs, not choices — find the compromise that honors all timeframes
-
-### 4. Verify Assumptions
-- "I assumed X" ≠ "I verified X"
-- What would you see if your key assumption were WRONG?
-- Which assumptions are load-bearing?
-
-### 5. Hold Contradictions
-- Multiple valid perspectives can coexist — don't force premature resolution
-- Where there's genuine tension, name the axis explicitly
-
-### 6. Synthesize
-- Devil's advocate: argue the opposite of your conclusion
-- Systems thinking: how does this connect to everything else?
-- What emerges from the analysis that wasn't visible before?"""
-
-    _CREATIVE_FRAMEWORK = """## Creative Exploration Framework
-
-Break free from conventional thinking. Apply each lens to your problem.
-
-### 1. Assumption Audit
-- What are you taking as GIVEN that could be questioned?
-- What constraints are actually constraints vs inherited/assumed?
-- What would someone who knows nothing about this try?
-
-### 2. Speculate Freely
-- "What if we..." without immediate feasibility filtering
-- Permission to propose wild ideas — quantity before quality
-- What's the most absurd approach that might actually work?
-
-### 3. Unexpected Connections
-- What does this remind you of from completely unrelated domains?
-- What patterns from nature, music, games, or architecture apply?
-- Analogical reasoning: "This is like X because..."
-
-### 4. Inversion
-- What's the OPPOSITE of the obvious approach?
-- What if you made the problem intentionally worse — what does that reveal?
-- What if the constraint IS the solution?
-
-### 5. Naive Questions
-- "Why do we do it this way?"
-- "What if we just didn't?"
-- "Says who?"
-- "What's the simplest thing that could possibly work?"
-
-### 6. Reframe
-- How would this look from a completely different stakeholder's perspective?
-- What if this isn't a problem to solve but a tension to manage?
-- What would you do if you had unlimited time? Zero time?"""
-
-    _BREAKTHROUGH_FRAMEWORK = """## Breakthrough Analysis Framework
-### Combined Rigorous + Creative — Maximum Problem-Solving Power
-
-Apply BOTH lenses simultaneously. Rigorous creativity / Creative rigor.
-
-### Phase 1: Rigorous Deconstruction
-- Deconstruct to first principles — what is the ACTUAL problem?
-- What orthogonal concerns are conflated?
-- Trace 1st → 2nd → 3rd → 4th order consequences
-- Verify every assumption explicitly
-
-### Phase 2: Creative Destruction
-- Now BREAK everything you just built
-- What assumptions in Phase 1 could be wrong?
-- What would the opposite approach look like?
-- What patterns from unrelated domains apply here?
-
-### Phase 3: Synthesis
-- Where do rigor and creativity CONVERGE? Those are structural insights.
-- Where do they DIVERGE? Those reveal hidden tensions.
-- What emerges that neither approach alone would find?
-- Hold the contradictions — name the axes of tension explicitly.
-
-### Phase 4: Action
-- What's the smallest experiment that would test your synthesis?
-- What would you need to see to know you're wrong?
-- What's the decision, and what's the rationale?
-
-The hardest problems require BOTH understanding why current approaches fail
-(rigor) AND imagining fundamentally different solutions (creativity).
-Neither alone is sufficient."""
-
-    def _think_deeper(self, args: dict) -> dict:
-        problem = args.get("problem", "").strip()
-        context = args.get("context", "")
-
-        if not problem:
-            return {"error": "problem is required — describe what you want to analyze"}
-
-        full_context = f"**Problem:** {problem}"
-        if context:
-            full_context += f"\n**Context:** {context}"
-
-        return {
-            "framework": self._DEEPER_FRAMEWORK,
-            "instruction": (
-                "Apply this analytical framework to the problem above. "
-                "Think through each step. IMPORTANT: After completing your "
-                "analysis, you MUST call add_memory with your key findings — "
-                "without this step, your analysis will be lost between sessions."
-            ),
-            "context": full_context,
-        }
-
-    def _think_creative(self, args: dict) -> dict:
-        problem = args.get("problem", "").strip()
-        attempts = args.get("attempts", "")
-
-        if not problem:
-            return {"error": "problem is required — describe what you want to explore"}
-
-        full_context = f"**Problem:** {problem}"
-        if attempts:
-            full_context += f"\n**Previous attempts:** {attempts}"
-
-        return {
-            "framework": self._CREATIVE_FRAMEWORK,
-            "instruction": (
-                "Apply this creative framework to break free from conventional "
-                "thinking. Challenge every assumption. IMPORTANT: After your "
-                "exploration, you MUST call add_memory with breakthrough insights — "
-                "without this step, your exploration will be lost between sessions."
-            ),
-            "context": full_context,
-        }
-
-    def _think_breakthrough(self, args: dict) -> dict:
-        problem = args.get("problem", "").strip()
-        context = args.get("context", "")
-
-        if not problem:
-            return {"error": "problem is required — describe what you want to break through"}
-
-        full_context = f"**Problem:** {problem}"
-        if context:
-            full_context += f"\n**Context:** {context}"
-
-        return {
-            "framework": self._BREAKTHROUGH_FRAMEWORK,
-            "instruction": (
-                "Apply BOTH rigorous deconstruction AND creative destruction "
-                "to this problem simultaneously. Where rigor and creativity "
-                "converge = structural insight. Where they diverge = hidden "
-                "tension. IMPORTANT: After analysis, you MUST call add_memory "
-                "with key findings — without this step, your analysis will be "
-                "lost between sessions."
-            ),
-            "context": full_context,
         }
 
     def _verify_integrity(self, args: dict) -> dict:

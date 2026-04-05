@@ -27,8 +27,6 @@ Usage:
 """
 
 from .audit import AuditConfig, AuditQueryResult, AuditVerifyResult
-from .client import FlowScriptAnthropic, FlowScriptOpenAI
-from .cloud import CloudClient, CloudFlushResult, CloudWitness
 from .continuity import ContinuityManager, ContinuityResult
 from .memory import (
     Memory,
@@ -45,20 +43,12 @@ from .memory import (
     SessionWrapResult,
 )
 from .unified import UnifiedMemory
-from .explain import explain, explain_counterfactual
 
 __version__ = "0.4.1"
 __all__ = [
-    "explain",
-    "explain_counterfactual",
     "AuditConfig",
     "AuditQueryResult",
     "AuditVerifyResult",
-    "FlowScriptAnthropic",
-    "FlowScriptOpenAI",
-    "CloudClient",
-    "CloudFlushResult",
-    "CloudWitness",
     "ContinuityManager",
     "ContinuityResult",
     "Memory",
